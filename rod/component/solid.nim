@@ -10,6 +10,7 @@ import rod.property_visitor
 type Solid* = ref object of Component
     size*: Size
     color*: Color
+    isEllipse*: bool
 
 method init*(s: Solid) =
     s.color = whiteColor()
@@ -32,10 +33,14 @@ method draw*(s: Solid) =
     r.size = s.size
     c.fillColor = s.color
     c.strokeWidth = 0
-    c.drawRect(r)
+    if s.isEllipse:
+        c.drawEllipseInRect(r)
+    else:
+        c.drawRect(r)
 
 method visitProperties*(c: Solid, p: var PropertyVisitor) =
     p.visitProperty("size", c.size)
     p.visitProperty("color", c.color)
+    p.visitProperty("ellipse", c.isEllipse)
 
 registerComponent[Solid]()

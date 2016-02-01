@@ -16,12 +16,14 @@ import rod.component.mesh_component
 import rod.component.material
 import rod.component.light
 import rod.component.sprite
+import rod.component.overlay
 import rod.component
 import rod.scene_composition
 
 import nimx.image
 import nimx.window
 import nimx.autotest
+import nimx.timer
 
 const isMobile = defined(ios) or defined(android)
 
@@ -36,7 +38,7 @@ proc runAutoTestsIfNeeded() =
     registerTest(generalUITest)
     when defined(runAutoTests):
         startRegisteredTests()
-
+#[
 proc registerAnimation(n: Node, v: EditView) =
     if not isNil(n.animations):
         for anim in n.animations.values():
@@ -48,7 +50,7 @@ proc registerAnimation(n: Node, v: EditView) =
     if not n.children.isNil:
        for child in n.children:
             registerAnimation(child, v)
-
+]#
 proc startApplication() =
     when isMobile:
         var mainWindow = newFullscreenWindow()
@@ -64,12 +66,14 @@ proc startApplication() =
     let cameraNode = editView.rootNode.newChild("camera")
     let camera = cameraNode.component(Camera)
     cameraNode.translation.z = 250
-
+    camera.projectionMode = cpOrtho
 
     let light = editView.rootNode.newChild("point_light")
     light.translation = newVector3(-100,100,100)
     let lightSource = light.component(LightSource)
     lightSource.setDefaultLightSource()
+
+    #[
 
     # let anim = newAnimation()
     # mainWindow.addAnimation(anim)
@@ -78,7 +82,6 @@ proc startApplication() =
 
         editView.rootNode.addChild(n)
 
-        mainWindow.addSubview(editView)
 
         # echo "Node: ", n.name
         # if not isNil(n.animations):
@@ -88,9 +91,24 @@ proc startApplication() =
         #         anim.loopDuration *= 2.0
 
         registerAnimation(n, editView)
+        ]#
 
-        discard startEditingNodeInView(editView.rootNode, editView)
+    let solid = editView.rootNode.newChild("solid")
+    let s = solid.component(Solid)
+    s.size = newSize(100, 100)
+    s.color = newColor(0.5, 0.0, 0.0, 1.0)
 
+    let overlayNode = solid.newChild("overlay")
+    #discard overlayNode.component(Overlay)
+
+    let oneMoreSolid = overlayNode.newChild("s2")
+    let s2 = oneMoreSolid.component(Solid)
+    oneMoreSolid.translation = newVector3(50, 50)
+    s2.size = newSize(100, 100)
+    s2.color = newColor(0.5, 0.5, 0.0, 1.0)
+
+    mainWindow.addSubview(editView)
+    discard startEditingNodeInView(editView.rootNode, editView)
     runAutoTestsIfNeeded()
 
 when defined js:

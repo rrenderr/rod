@@ -28,7 +28,7 @@ vec4 colorPow(vec4 i, float p) {
 }
 
 void compose() {
-    vec2 uv = gl_FragCoord.xy / viewportSize * uForeground.texCoords.zw;
+    vec2 uv = gl_FragCoord.xy / viewportSize * (uForeground.texCoords.zw);
     vec4 inPixel = texture2D(uForeground.tex, uv);
     gl_FragColor = (colorPow(((inPixel) - inBlack) / (inWhite - inBlack),
                     inGamma) * (outWhite - outBlack) + outBlack);
@@ -37,7 +37,7 @@ void compose() {
 """
 
 template areValuesNormal(c: ChannelLevels): bool =
-    c.inWhite == 1 and c.inBlack == 0 and
+    true or c.inWhite == 1 and c.inBlack == 0 and
         c.inGamma == 1 and c.outWhite == 1 and c.outBlack == 0
 
 method init*(c: ChannelLevels) =
@@ -64,9 +64,9 @@ method draw*(cl: ChannelLevels) =
 
         let tmpBuf = vp.aquireTempFramebuffer()
 
-        bindFramebuffer(gl, tmpBuf)
+        gl.bindFramebuffer(tmpBuf)
 
-        gl.clear(c.gl.COLOR_BUFFER_BIT or c.gl.STENCIL_BUFFER_BIT or c.gl.DEPTH_BUFFER_BIT)
+        gl.clearWithColor(0, 0, 0, 0)
         for c in cl.node.children: c.recursiveDraw()
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, oldBuf)
@@ -74,8 +74,12 @@ method draw*(cl: ChannelLevels) =
         let vpbounds = gl.getViewport()
         let vpSize = newSize(vpbounds[2].Coord, vpbounds[3].Coord)
 
-        c.withTransform vp.getViewProjectionMatrix():
-            levelsComposition.draw newRect(0, 0, 1920, 1080):
+        #echo "cl: ", @vpbounds
+
+        let o = ortho(vpbounds[0].Coord, vpbounds[2].Coord, vpbounds[3].Coord, vpbounds[1].Coord, -1, 1)
+
+        c.withTransform o:
+            levelsComposition.draw newRect(0, 0, vpbounds[2].Coord, vpbounds[3].Coord):
                 setUniform("inWhite", cl.inWhite)
                 setUniform("inBlack", cl.inBlack)
                 setUniform("inGamma", cl.inGamma)

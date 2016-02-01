@@ -17,7 +17,7 @@ method init*(c: Camera) =
 proc getProjectionMatrix*(c: Camera, viewportBounds: Rect, mat: var Transform3D) =
     case c.projectionMode
     of cpOrtho:
-        mat.ortho(-viewportBounds.width / 2, viewportBounds.width / 2, -viewportBounds.height / 2, viewportBounds.height / 2, c.zNear, c.zFar)
+        mat.ortho(-viewportBounds.width / 2, viewportBounds.width / 2, viewportBounds.height / 2, -viewportBounds.height / 2, c.zNear, c.zFar)
     of cpPerspective:
         mat.perspective(30, viewportBounds.width / viewportBounds.height, c.zNear, c.zFar)
     of cpManual:

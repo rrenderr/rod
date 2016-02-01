@@ -146,7 +146,7 @@ proc adjustImageNode(tool: ImgTool, jComp, jNode, jSprite, jFileName: JsonNode,
     result["file"] = %relativePathToPath(compPath, tool.outPrefix & $im.spriteSheet.index & ".png")
     let w = im.spriteSheet.packer.width.float
     let h = im.spriteSheet.packer.height.float
-    result["tex"] = %*[im.pos.x.float / w, im.pos.y.float / h, (im.pos.x + im.targetSize.width).float / w, (im.pos.y + im.targetSize.height).float / h]
+    result["tex"] = %*[(im.pos.x.float + 0.5) / w, (im.pos.y.float + 0.5) / h, ((im.pos.x + im.targetSize.width).float + 0.5) / w, ((im.pos.y + im.targetSize.height).float + 0.5) / h]
     result["size"] = %*[im.srcSize.width, im.srcSize.height]
 
     if im.srcBounds.x > 0 or im.srcBounds.y > 0:
@@ -193,14 +193,15 @@ proc recalculateSourceBounds(im: SpriteSheetImage, jComp, jNode, jSprite: JsonNo
         im.srcSize.height = im.srcBounds.height
 
 proc betterDimension(d: int): int =
-    result = case d
+    let r = int(d / 2)
+    result = case r
         of 257 .. 400: 256
         of 513 .. 700: 512
         of 1025 .. 1300: 1024
-        else: d
+        else: r
     if result > 2048: result = 2048
 
-proc recalculateTargetSize(im: SpriteSheetImage) =
+proc recalculateTargetSize(im: SpriteSheetImage, jComp, jNode, jSprite: JsonNode, frameIdx: int) =
     im.targetSize.width = betterDimension(im.srcSize.width)
     im.targetSize.height = betterDimension(im.srcSize.height)
 
@@ -224,7 +225,7 @@ proc run(tool: ImgTool) =
                 let im = newSpriteSheetImage(absPath)
                 if not im.isNil:
                     im.recalculateSourceBounds(c, n, s, ifn)
-                    im.recalculateTargetSize()
+                    im.recalculateTargetSize(c, n, s, ifn)
                     im.imageIndex = tool.images.len
                     tool.images[absPath] = im
 

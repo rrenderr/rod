@@ -41,9 +41,13 @@ proc prepareFramebuffer(v: SceneView, i: var SelfContainedImage, sz: Size) =
     if i.isNil:
         echo "Creating buffer"
         i = imageWithSize(sz)
+        #swap(i.texCoords[1], i.texCoords[3])
+        i.flipVertically()
     elif i.size != sz:
         echo "Recreating buffer"
         i = imageWithSize(sz)
+        i.flipVertically()
+        #swap(i.texCoords[1], i.texCoords[3])
 
 proc prepareFramebuffers(v: SceneView) =
     v.numberOfNodesWithBackCompositionInCurrentFrame = v.numberOfNodesWithBackComposition
@@ -55,6 +59,7 @@ proc prepareFramebuffers(v: SceneView) =
         v.prepareFramebuffer(v.mBackupFrameBuffer, sz)
         v.mScreenFramebuffer = gl.boundFramebuffer()
         gl.bindFramebuffer(v.mActiveFrameBuffer)
+        gl.clearWithColor(0, 0, 0, 0)
 
 proc getViewProjectionMatrix*(v: SceneView): Matrix4 =
     let cam = v.camera
@@ -73,6 +78,7 @@ method draw*(v: SceneView, r: Rect) =
 
     let c = currentContext()
     v.prepareFramebuffers()
+    echo "draw: ", v.numberOfNodesWithBackCompositionInCurrentFrame
 
     c.withTransform v.getViewProjectionMatrix():
         v.rootNode.recursiveDraw()
@@ -81,7 +87,9 @@ method draw*(v: SceneView, r: Rect) =
         # When some compositing nodes are optimized away, we have
         # to blit current backup buffer to the screen.
         v.numberOfNodesWithBackCompositionInCurrentFrame = 1
+        echo "swapping remaining compositing buffer"
         v.swapCompositingBuffers()
+    echo "frame done"
 
 proc rayWithScreenCoords*(v: SceneView, coords: Point): Ray =
     result.origin = v.camera.node.translation
@@ -115,9 +123,13 @@ proc aquireTempFramebuffer*(v: SceneView): SelfContainedImage =
         if result.size != size:
             echo "REALLOCATING TEMP BUFFER"
             result = imageWithSize(size)
+            result.flipVertically()
+            #swap(result.texCoords[1], result.texCoords[3])
     else:
         echo "CREATING TEMP BUFFER"
         result = imageWithSize(size)
+        result.flipVertically()
+        #swap(result.texCoords[1], result.texCoords[3])
 
 proc releaseTempFramebuffer*(v: SceneView, fb: SelfContainedImage) =
     if v.tempFramebuffers.isNil:
@@ -126,21 +138,28 @@ proc releaseTempFramebuffer*(v: SceneView, fb: SelfContainedImage) =
 
 proc swapCompositingBuffers*(v: SceneView) =
     assert(v.numberOfNodesWithBackCompositionInCurrentFrame > 0)
+    echo "swap comp buffer"
     dec v.numberOfNodesWithBackCompositionInCurrentFrame
     let boundsSize = v.bounds.size
     let c = currentContext()
     let gl = c.gl
     let vp = gl.getViewport()
-    when defined(js) or defined(android):
+    when defined(js) or true:
         #proc ortho*(dest: var Matrix4, left, right, bottom, top, near, far: Coord) =
-        var mat = ortho(0, cast[Coord](vp[2]), 0, cast[Coord](vp[3]), -1, 1)
+        var mat = ortho(0, cast[Coord](vp[2]), cast[Coord](vp[3]), 0, -1, 1)
 
         c.withTransform mat:
             if v.numberOfNodesWithBackCompositionInCurrentFrame == 0:
                 gl.bindFramebuffer(gl.FRAMEBUFFER, v.mScreenFrameBuffer)
             else:
                 gl.bindFramebuffer(gl.FRAMEBUFFER, v.mBackupFrameBuffer.framebuffer)
+            #swap(v.mActiveFrameBuffer.texCoords[1], v.mActiveFrameBuffer.texCoords[3])
+            let a = c.alpha
+            c.alpha = 1.0
+            gl.disable(gl.BLEND)
             c.drawImage(v.mActiveFrameBuffer, newRect(0, 0, cast[Coord](vp[2]), cast[Coord](vp[3])))
+            gl.enable(gl.BLEND)
+            c.alpha = a
     else:
         if v.numberOfNodesWithBackCompositionInCurrentFrame == 0:
             # Swap active buffer to screen
@@ -152,6 +171,7 @@ proc swapCompositingBuffers*(v: SceneView) =
             gl.bindFramebuffer(GL_DRAW_FRAMEBUFFER, v.mBackupFrameBuffer.framebuffer)
         glBlitFramebuffer(0, 0, vp[2], vp[3], 0, 0, vp[2], vp[3], GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT or GL_STENCIL_BUFFER_BIT, GL_NEAREST)
 
+    #echo "num: ", v.numberOfNodesWithBackCompositionInCurrentFrame
     swap(v.mActiveFrameBuffer, v.mBackupFrameBuffer)
 
 proc addAnimation*(v: SceneView, a: Animation) = v.window.addAnimation(a)
