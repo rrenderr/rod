@@ -345,3 +345,4 @@ when not defined(android) and not defined(ios):
         result.addSubview(b)
 
     registerPropertyEditor(newNinePartPropertyView)
+
