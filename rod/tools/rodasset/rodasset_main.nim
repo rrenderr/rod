@@ -135,12 +135,13 @@ proc packSingleAssetBundle(s: Settings, cache: string, onlyCache: bool, src, dst
             moveDir(tmpCacheDir, c) # Newer nim should support it
         else:
             moveFile(tmpCacheDir, c)
-        
+
         echo " "
         echo " "
         var info = newJObject()
         for r in walkDirRec(c):
-            info[r.substr(c.len + 1)] = %sha1hexdigest(readFile(r))
+            if not r.endsWith(".info"):
+                info[r.substr(c.len + 1)] = %sha1hexdigest(readFile(r))
         writeFile(c / ".info", $info)
         echo info
         echo " "
